@@ -1,6 +1,9 @@
 from rubpy import Client, filters
-import os  # این خط رو اضافه کن
+import os
+import threading
+from flask import Flask
 
+# --- بخش ربات روبیکا ---
 bot = Client(name="simple_bot")
 
 @bot.on_message_updates(filters.commands(["start"]))
@@ -12,26 +15,21 @@ async def reply_to_salam(message):
     if message.text == "سلام":
         await message.reply("سلام! خوبی؟ من حاضرم.")
 
-# ---- این بخش جدید برای Render است ----
-# Render نیاز دارد تا برنامه روی یک پورت شبکه گوش کند
+# --- بخش وب سرور برای Render ---
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "ربات روبیکا فعال است."
+
+def run_bot():
+    print("ربات در حال اجراست...")
+    bot.run()  # این دستور حلقه بی‌نهایت دارد
+
 if __name__ == "__main__":
-    from flask import Flask
-    import threading
+    # اجرای ربات در یک ترد جداگانه
+    threading.Thread(target=run_bot, daemon=True).start()
     
-    app = Flask(__name__)
-    
-    @app.route('/')
-    def home():
-        return "ربات در حال اجراست!"
-    
-    # اجرای ربات روبیکا در یک Thread جداگانه
-    def run_bot():
-        print("ربات در حال اجراست...")
-        bot.run()
-    
-    threading.Thread(target=run_bot).start()
-    
-    # اجرای وب سرور Flask روی پورت ۱۰۰۰۰
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port)
-# ---- پایان بخش جدید ----
+    # اجرای وب سرور روی پورت تعیین شده توسط Render
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
