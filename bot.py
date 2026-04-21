@@ -1,35 +1,40 @@
 from rubpy import Client, filters
-import os
-import threading
-from flask import Flask
 
-# --- بخش ربات روبیکا ---
+# --- اتصال ربات ---
 bot = Client(name="simple_bot")
 
+# --- دستور /start ---
 @bot.on_message_updates(filters.commands(["start"]))
 async def start(message):
-    await message.reply("ربات روشن شد! بگو سلام.")
+    await message.reply("ربات روشن شد! برای دریافت عکس پروفایل خود، کلمه 'عکس پروفایل' را بفرستید.")
 
+# --- دریافت و ارسال عکس پروفایل ---
 @bot.on_message_updates(filters.text)
-async def reply_to_salam(message):
-    if message.text == "سلام":
-        await message.reply("سلام! خوبی؟ من حاضرم.")
+async def handle_profile_photo(message):
+    if message.text == "عکس پروفایل":
+        try:
+            # دریافت اطلاعات عکس‌های پروفایل کاربر
+            user_photos = await bot.get_profile_photos(message.author_guid)
 
-# --- بخش وب سرور برای Render ---
-app = Flask(__name__)
+            if user_photos and len(user_photos) > 0:
+                # انتخاب اولین عکس پروفایل (اصلی)
+                first_photo = user_photos[0]
 
-@app.route('/')
-def home():
-    return "ربات روبیکا فعال است."
+                # استخراج شناسه فایل عکس (بسته به ساختار کتابخانه ممکن است متفاوت باشد)
+                # در برخی نسخه‌ها ممکن است از 'file_id' یا 'id' استفاده شود.
+                file_id = first_photo.get('file_id') or first_photo.get('id')
 
-def run_bot():
-    print("ربات در حال اجراست...")
-    bot.run()  # این دستور حلقه بی‌نهایت دارد
+                if file_id:
+                    # ارسال عکس به کاربر
+                    await message.reply_photo(file_id, caption="عکس پروفایل شما:")
+                else:
+                    await message.reply("نتونستم عکس پروفایلت رو پیدا کنم!")
+            else:
+                await message.reply("شما عکس پروفایل ندارید!")
+        except Exception as e:
+            # مدیریت خطاهای احتمالی
+            await message.reply(f"در دریافت عکس پروفایل خطایی رخ داد: {e}")
 
-if __name__ == "__main__":
-    # اجرای ربات در یک ترد جداگانه
-    threading.Thread(target=run_bot, daemon=True).start()
-    
-    # اجرای وب سرور روی پورت تعیین شده توسط Render
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+# --- اجرای ربات ---
+print("ربات در حال اجراست...")
+bot.run()
